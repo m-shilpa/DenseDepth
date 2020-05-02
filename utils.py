@@ -9,6 +9,7 @@ def predict(model, images, minDepth=10, maxDepth=1000, batch_size=2):
     if len(images.shape) < 3: images = np.stack((images,images,images), axis=2)
     if len(images.shape) < 4: images = images.reshape((1, images.shape[0], images.shape[1], images.shape[2]))
     # Compute predictions
+
     predictions = model.predict(images, batch_size=batch_size)
     # Put in expected range
     return np.clip(DepthNorm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
@@ -27,8 +28,11 @@ def scale_up(scale, images):
 def load_images(image_files):
     loaded_images = []
     for file in image_files:
-        x = np.clip(np.asarray(Image.open( file ), dtype=float) / 255, 0, 1)
-        loaded_images.append(x)
+      img = Image.open( file )
+      if (img.size[0],img.size[1])< (640,480):
+        img = img.resize((480,640))
+      x = np.clip(np.asarray(img, dtype=float) / 255, 0, 1)
+      loaded_images.append(x)
     return np.stack(loaded_images, axis=0)
 
 def to_multichannel(i):
@@ -36,7 +40,7 @@ def to_multichannel(i):
     i = i[:,:,0]
     return np.stack((i,i,i), axis=2)
         
-def display_images(outputs, inputs=None, gt=None, is_colormap=True, is_rescale=True):
+def display_images(outputs, inputs=None,output_size=None, gt=None, is_colormap=True, is_rescale=True):
     import matplotlib.pyplot as plt
     import skimage
     from skimage.transform import resize
@@ -70,12 +74,16 @@ def display_images(outputs, inputs=None, gt=None, is_colormap=True, is_rescale=T
             
             img = skimage.util.montage([plasma(rescaled)[:,:,:3]], multichannel=True, fill=(0,0,0))
             im = Image.fromarray(np.uint8(img*255))
+            if output_size!=None:
+              im = im.resize((output_size,output_size))
             im.save('output/depth_img-'+str(i)+'.jpg')
         else:
             imgs.append(to_multichannel(outputs[i]))
 
             img = skimage.util.montage([to_multichannel(outputs[i])], multichannel=True, fill=(0,0,0))
             im = Image.fromarray(np.uint8(img*255))
+            if output_size!=None:
+              im = im.resize((output_size,output_size))
             im.save('output/depth_img-'+str(i)+'.jpg')
 
         
